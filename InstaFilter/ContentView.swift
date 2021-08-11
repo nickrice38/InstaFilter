@@ -18,6 +18,12 @@ struct ContentView: View {
     @State private var inputImage: UIImage?
     @State private var processedImage: UIImage?
     
+    @State private var currentFilterTitle = "Select Filter"
+    
+    @State private var showingError = false
+    @State private var errorTitle = ""
+    @State private var errorMessage = ""
+    
     @State var currentFilter: CIFilter = CIFilter.sepiaTone()
     let context = CIContext()
     
@@ -60,14 +66,19 @@ struct ContentView: View {
                 .padding(.vertical)
                 
                 HStack {
-                    Button("Change Filter") {
+                    Button("\(currentFilterTitle)") {
                         self.showingFilterSheet = true
                     }
                     
                     Spacer()
                     
                     Button("Save") {
-                        guard let processedImage = self.processedImage else { return }
+                        guard let processedImage = self.processedImage else {
+                            self.showingError = true
+                            self.errorTitle = "Unable to Save"
+                            self.errorMessage = "Please select an image before saving"
+                            return
+                        }
                         
                         let imageSaver = ImageSaver()
                         
@@ -101,6 +112,9 @@ struct ContentView: View {
                     .cancel()
                 ])
             }
+            .alert(isPresented: $showingError) {
+                Alert(title: Text(errorTitle), message: Text(errorMessage), dismissButton: .default(Text("OK")))
+            }
         }
     }
     
@@ -130,7 +144,21 @@ struct ContentView: View {
     
     func setFilter(_ filter: CIFilter) {
         currentFilter = filter
+        currentFilterTitle = camelCaseToWords(filter.name)
         loadImage()
+    }
+    
+    func camelCaseToWords(_ camelString: String) -> String {
+        let replacementString = camelString.replacingOccurrences(of: "CI", with: "", options: .regularExpression, range: nil)
+        return replacementString.unicodeScalars.reduce("") {
+            if CharacterSet.uppercaseLetters.contains($1) {
+                if $0.count > 0 {
+                    return ($0 + " " + String($1))
+                }
+            }
+            
+            return $0 + String($1)
+        }
     }
 }
 
